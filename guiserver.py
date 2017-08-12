@@ -3,7 +3,7 @@
 """
 ====== To do ======
 	- KeepAlive
-	- detect own IP address for listen mode
+	- needs better method of detecting IP address
 	- Label (?) for receiving view
 		- copy-able text?
 	- clear receive view
@@ -253,7 +253,9 @@ def makeconnection():
 	global receivethread
 	connection=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	print "about to try to connect"
-	ReceivingQueue.put(("Trying to connect...","blue"))
+	# ReceivingQueue.put(("Trying to connect...","blue"))
+	print "trying to connect to %s on port %s" % targetaddress
+	ReceivingQueue.put(("Trying to connect to %s on port %s..." % targetaddress,"blue"))
 	try:
 		connection.connect(targetaddress)
 	except socket.error as err:
@@ -275,7 +277,10 @@ def startconnectthread():
 	else:
 		global targetaddress
 		if not IPaddressEntry.get() == "":
-			targetaddress == (IPaddressEntry.get(),PortEntry.get())
+			print "IPaddressEntry isn't empty"
+			print "Has "+str(IPaddressEntry.get())
+			targetaddress = (str(IPaddressEntry.get()),int(PortEntry.get()))
+			print "targetaddress changed to "+str(targetaddress)
 		startbuttonoff()
 		makeconnection()
 
