@@ -13,7 +13,6 @@
 	- password
 
 ====== Check for ======
-	- can't fakeconnect when closing connection
 	- connecting on a port that's already being used, already listening
 	for something else (like port 80), etc.
 	- Sending messages too fast causes error. Probably fix with blocking.
