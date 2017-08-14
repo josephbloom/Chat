@@ -69,15 +69,15 @@ def startlisten():
 	ReceivingQueue.put(('starting up on %s port %s' % server_address,"blue"))
 	try:
 		server.bind(server_address)
-	except:
+	except Exception as err:
 		# connection.shutdown(socket.SHUT_RD | socket.SHUT_WR)
 		# connection.close()
 		print "--- Server stopped. Couldn't establish address. ---"
-		ReceivingQueue.put(("*** Server stopped. Couldn't establish address. ***","red"))
+		print err
+		ReceivingQueue.put(("*** Server stopped. Couldn't establish address. ***\n"+str(err),"red"))
 		server.close()
 		mainevent.set()
 		startbuttonon()
-		
 		quit()
 	mainevent.set()
 
@@ -260,11 +260,10 @@ def makeconnection():
 	global connection
 	global receivethread
 	global myport
-	connection=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	print "about to try to connect"
-	# ReceivingQueue.put(("Trying to connect...","blue"))
 	print "trying to connect to %s on port %s" % targetaddress
 	ReceivingQueue.put(("Trying to connect to %s on port %s..." % targetaddress,"blue"))
+	connection=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	try:
 		connection.connect(targetaddress)
 	except socket.error as err:
