@@ -2,10 +2,8 @@
 
 """
 ====== To do ======
-	- KeepAlive
 	- needs better method of detecting IP address
-	- Label (?) for receiving view
-		- copy-able text?
+	- make receving text not editable
 	- clear receive view
 	- SAFE removal and reading of extra backslashes
 	- Produce .txt of conversation
@@ -16,6 +14,7 @@
 	- connecting on a port that's already being used, already listening
 	for something else (like port 80), etc.
 	- Sending messages too fast causes error. Probably fix with blocking.
+	- difficulty functioning quickly in Windows
 """
 
 
@@ -25,6 +24,7 @@ import ttk
 import threading
 import socket
 import Queue
+import time
 from platform import system
 
 c = ''
@@ -101,6 +101,8 @@ def startlisten():
 	ReceivingQueue.put(('ConnectionLabel.configure(text="Connection: CONNECTED")',"guiupdate"))
 	print "\nconnection from ", connection.getpeername()
 	ReceivingQueue.put(("connection from "+str(connection.getpeername()),"blue"))
+	keepalivesignal()
+	# keepalivethread.start()
 
 	while True:
 		print "waiting to receive"
@@ -122,7 +124,9 @@ def startlisten():
 				startbuttonon()
 				print "--- Connection closed from other side: Quit signal. ---"
 				ReceivingQueue.put(("--- Connection closed from other side: Quit signal. ---","blue"))
-				break
+				break #1
+			if data[0] == '2':
+				ReceivingQueue.put((data))
 			if data == '':
 				connection.shutdown(socket.SHUT_RD | socket.SHUT_WR)
 				connection.close()
@@ -134,7 +138,7 @@ def startlisten():
 				startbuttonon()
 				print "--- Connection closed from other side: No signal. ---"
 				ReceivingQueue.put(("--- Connection closed from other side: No signal. ---","blue"))
-				break
+				break #2
 		elif type(data) == bool and data == True:
 			connection.shutdown(socket.SHUT_RD | socket.SHUT_WR)
 			connection.close()
@@ -146,12 +150,12 @@ def startlisten():
 			print "--- Connection closed from here. ---"
 			ReceivingQueue.put(("--- Connection closed from here. ---","blue"))
 			stoplistenthread.clear()
-			break
+			break #3
 		else:
 			print "Something unexpected happened. Connection stopped:"
 			print data
 			ReceivingQueue.put(("Something unexpected happened. Connection stopped:\n"+str(data),"red"))
-			break
+			break #4
 
 def startlistenthread():
 	if not 'listenthread' in [i.name for i in threading.enumerate()]:
@@ -165,6 +169,7 @@ def startlistenthread():
 			startbuttonoff()
 			return
 		listenthread = threading.Thread(target=startlisten,name="listenthread")
+		# keepalivethread = threading.Thread(target=keepalivesignal, name="keepalivesignal")
 		print 'thread defined'
 		listenthread.start()
 		print 'thread started'
@@ -213,16 +218,16 @@ targetaddress = (myIP,myport)
 connectionevent = threading.Event()
 
 def receivemessage():
-    global connectionevent
-    global connection
-    global targetaddress
-    while True:
-        print 'waiting on data'
-        data = connection.recv(1024) or connectionevent.wait()
-        # data = s.recv(1024)
-        if type(data) == str:
-            print 'data is str'
-            if data == '' or data[0] == '0':
+	global connectionevent
+	global connection
+	global targetaddress
+	while True:
+		print 'waiting on data'
+		data = connection.recv(1024) or connectionevent.wait()
+		# data = s.recv(1024)
+		if type(data) == str:
+			print 'data is str'
+			if data == '' or data[0] == '0':
 				connection.shutdown(socket.SHUT_RD | socket.SHUT_WR)
 				connection.close()
 				connectionevent.clear()
@@ -232,15 +237,17 @@ def receivemessage():
 				startbuttonon()
 				print "--- connection closed by other side ---"
 				ReceivingQueue.put(("--- Connection closed by other side ---", "blue"))
-				break
-            elif data[0] == '1':
+				break #5
+			elif data[0] == '1':
 				print "Received:",data[1:]
 				ReceivingQueue.put(("Received: "+str(cleanmessage(data[1:])),"black"))
-            else:
+			elif data[0] == '2':
+				ReceivingQueue.put((data))
+			else:
 				print "Unexpected data:\n",data
 				ReceivingQueue.put(("--- Unexpected data ---\n"+str(data),"red"))
-				break
-        if type(data) == bool and data == True:
+				break #6
+        	if type(data) == bool and data == True:
 			print 'data is bool'
 			print data
 			connection.shutdown(socket.SHUT_RD | socket.SHUT_WR)
@@ -252,8 +259,7 @@ def receivemessage():
 			startbuttonon()
 			print "--- connection closed by you ---"
 			ReceivingQueue.put(("--- Connection closed by you ---","blue"))
-			break
-
+			break #7
 def makeconnection():
 	print "make connection started"
 	global targetaddress
@@ -266,10 +272,10 @@ def makeconnection():
 	connection=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	try:
 		connection.connect(targetaddress)
-	except socket.error as err:
+	except Exception as err:
 		startbuttonon()
 		print "\nSocket not open. Could not be reached.\n"
-		ReceivingQueue.put(("Socket not open. Could not reach listener.","red"))
+		ReceivingQueue.put(("Socket not open. Could not reach listener:\n"+str(err),"red"))
 		# print err
 		return
 	print "Listening on port",connection.getsockname()
@@ -277,7 +283,10 @@ def makeconnection():
 	ReceivingQueue.put(("Listening on port "+str(connection.getsockname()),"blue"))
 	myport = connection.getsockname()[1]
 	receivethread = threading.Thread(target=receivemessage, name="receivethread")
+	# keepalivethread = threading.Thread(target=keepalivesignal, name="keepalivesignal")
 	connectison.set()
+	# keepalivethread.start()
+	keepalivesignal()
 	receivethread.start()
 
 def startconnectthread():
@@ -297,6 +306,15 @@ def startconnectthread():
 #################################################
 #################################################
 
+
+def keepalivesignal():
+	print "keepalive signal called"
+	# if connect_event == 1 or connectison == 1:
+	if True == connect_event.is_set() or connectison.is_set():
+		print "event is True"
+		global connection
+		connection.send("2")
+		print "sent '2'"
 
 def fakeconnect():
 	fakeaddress = (str(myIP), int(myport))
@@ -375,25 +393,45 @@ def startbuttonon():
 		"guiupdate"))
 
 # pollcheck = 1
+keepalive = 0
 def pollqueue():
 	# global pollcheck
-	try:
-		item=ReceivingQueue.get(False)
-		if item[len(item)-1] == "guiupdate":
-			for cmd in item[:len(item)-1]:
-				# print cmd
-				eval(cmd)
-			root.after(300,pollqueue)
-			return
-		print item
-		ReceivingText.insert(END,str(item[0])+"\n",item[1])
-		ReceivingText.see(END)
-	except Queue.Empty as err:
-		pass
-		# print "empty",pollcheck
-		# pollcheck += 1
-		# if pollcheck > 3:
-		# 	pollcheck = 1
+	global keepalive
+	# if connect_event == 1 or connectison == 1:
+	if True == connect_event.is_set() or connectison.is_set():
+		keepalive += 1
+		if keepalive == 5:
+			ReceivingText.insert(END,"Keepalive not received at 5.\n","red")
+			ReceivingText.see(END)
+		if keepalive == 10:
+			ReceivingText.insert(END,"Keepalive not received at 10, Timeout.\n","red")
+			ReceivingText.see(END)
+			closeconnection()
+	else:
+		keepalive = 0
+	while True:
+		try:
+			item=ReceivingQueue.get(False)
+			if item[0] == "2":
+				print "received '2'"
+				keepalivesignal()
+				keepalive = 0
+				continue
+			if item[len(item)-1] == "guiupdate":
+				for cmd in item[:len(item)-1]:
+					# print cmd
+					eval(cmd)
+				continue
+			print item
+			ReceivingText.insert(END,str(item[0])+"\n",item[1])
+			ReceivingText.see(END)
+			continue
+		except Queue.Empty as err:
+			break #8
+			# print "empty",pollcheck
+			# pollcheck += 1
+			# if pollcheck > 3:
+			# 	pollcheck = 1
 	root.after(300,pollqueue)
 
 def cleanmessage(message):
@@ -431,6 +469,7 @@ def checksend(arg=None):
 
 receivethread = threading.Thread(target=receivemessage, name="receivethread")
 listenthread = threading.Thread(target=startlisten,name="listenthread")
+# keepalivethread = threading.Thread(target=keepalivesignal, name="keepalivesignal")
 
 ####################################
 ############## GUI #################
