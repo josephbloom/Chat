@@ -9,7 +9,6 @@
 	- password
 
 ====== Check for ======
-	- Sending messages too fast causes error. Probably fix with blocking.
 	- difficulty functioning quickly in Windows
 	- line breaks in the  middle of words depending window size
 """
