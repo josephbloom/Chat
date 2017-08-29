@@ -21,6 +21,7 @@ import threading
 import socket
 import Queue
 import time
+# import sys
 from platform import system
 
 c = ''
@@ -492,6 +493,7 @@ listenthread = threading.Thread(target=startlisten,name="listenthread")
 
 root.title("Joe Chat")
 root.geometry('{}x{}'.format(550, 600))
+root.wm_iconbitmap('chaticon.ico')
 root.minsize(550,600)
 root["bg"] = "#e6e6e6"
 
@@ -600,7 +602,7 @@ SendingTextScroll.pack(side=RIGHT, fill=Y)
 
 def stoppingapp():
 	closeconnection()
-	quit()
+	root.destroy()
 
 ###### MISC GUI STUFF ######
 root.after(300, pollqueue)
